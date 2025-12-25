@@ -8,8 +8,8 @@ title: "Substitution Mapping Mixer"
 subtitle_ja: "換字式暗号の手動解析ワークベンチ"
 subtitle_en: "Manual substitution-cipher mapping workbench"
 
-description_ja: "換字式暗号を手動で解析するためのWebツール。確定マッピングと候補マッピングを管理し、複数の仮説をブランチとして比較できます。"
-description_en: "A web tool for manually analyzing substitution ciphers. Manage fixed and candidate mappings, and compare multiple hypotheses as branches."
+description_ja: "換字式暗号の置換表を手動で解析するためのWebツール。確定マッピングと候補マッピングを管理し、複数の仮説をブランチとして比較できます。"
+description_en: "A web tool for manually analyzing substitution cipher mapping tables. Manage fixed and candidate mappings, and compare multiple hypotheses as branches."
 
 category_ja:
   - 暗号解析
@@ -35,7 +35,7 @@ hub: true
 ---
 -->
 
-# Substitution Mapping Mixer – 換字式暗号の手動解析ワークベンチ
+# Substitution Mapping Mixer – 換字式暗号の置換表の手動解析支援ツール
 
 ![GitHub Repo stars](https://img.shields.io/github/stars/ipusiron/substitution-mapping-mixer?style=social)
 ![GitHub forks](https://img.shields.io/github/forks/ipusiron/substitution-mapping-mixer?style=social)
@@ -45,8 +45,10 @@ hub: true
 
 **Day105 - 生成AIで作るセキュリティツール200**
 
-換字式暗号（単一換字暗号）を**手動で解析する**ためのWebツールです。
-自動解読ではなく、人間が仮説を立て、検証し、思考するための作業台を提供します。
+**Substitution Mapping Mixer** は、換字式暗号（単一換字暗号）の置換表を手動で解析するためのWebツールです。
+
+暗号文文字から平文文字へのマッピングにおいて、確定と候補を管理し、複数の仮説をブランチとして比較できます。
+比較の結果から、候補をさらに絞り込むことで、徐々に置換表を完成させられます。
 
 ---
 
