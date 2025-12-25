@@ -127,7 +127,9 @@ hub: true
 
 ```
 substitution-mapping-mixer/
-├── index.html          # メインHTMLファイル（CSS/JS含む）
+├── index.html          # メインHTMLファイル
+├── style.css           # スタイルシート
+├── script.js           # JavaScriptコード
 ├── README.md           # 本ドキュメント
 ├── LICENSE             # ライセンスファイル
 ├── SPEC.md             # 機能仕様書
