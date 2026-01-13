@@ -378,6 +378,110 @@ cipherInput.addEventListener('input', () => {
   updateAll();
 });
 
+// Export buttons
+const copySemanticBtn = document.getElementById('copySemanticBtn');
+const downloadSemanticBtn = document.getElementById('downloadSemanticBtn');
+
+// Format branches for Semantic Ranking export
+function formatBranchesForSemanticRanking() {
+  const branches = generateBranches();
+
+  // Check 200 candidates limit
+  if (branches.length > 200) {
+    return { error: 'Too many candidates (>200). Please narrow down results.' };
+  }
+
+  const blocks = [];
+
+  for (let i = 0; i < branches.length; i++) {
+    const branch = branches[i];
+    const branchLabel = `B${i + 1}`;
+
+    // Generate mapping line (branch-specific substitutions only)
+    const mappingParts = [];
+    if (branch.branchSpecific) {
+      for (const [cipher, plain] of Object.entries(branch.branchSpecific)) {
+        mappingParts.push(`${cipher}->${plain}`);
+      }
+    }
+    const mappingLine = mappingParts.join(',');
+
+    // Generate plaintext candidate (decoded text as string)
+    const decoded = decodeText(state.inputText, branch.mapping, branch.branchSpecific || {});
+    const plaintextCandidate = decoded.map(item => item.decoded).join('');
+
+    // Build block
+    const block = [
+      `branch=${branchLabel}`,
+      `mapping=${mappingLine}`,
+      plaintextCandidate
+    ].join('\n');
+
+    blocks.push(block);
+  }
+
+  // Join blocks with empty line separator, use LF
+  return { content: blocks.join('\n\n') };
+}
+
+// Copy for Semantic Ranking
+async function copyForSemanticRanking() {
+  const result = formatBranchesForSemanticRanking();
+
+  if (result.error) {
+    alert(result.error);
+    return;
+  }
+
+  if (!result.content || result.content.trim() === '') {
+    alert('No branches to export.');
+    return;
+  }
+
+  try {
+    await navigator.clipboard.writeText(result.content);
+    // Show success message
+    const originalText = copySemanticBtn.textContent;
+    copySemanticBtn.textContent = 'Copied (Semantic Ranking format)';
+    copySemanticBtn.disabled = true;
+    setTimeout(() => {
+      copySemanticBtn.textContent = originalText;
+      copySemanticBtn.disabled = false;
+    }, 2000);
+  } catch (err) {
+    alert('Failed to copy to clipboard. Please check browser permissions.');
+  }
+}
+
+// Download for Semantic Ranking
+function downloadForSemanticRanking() {
+  const result = formatBranchesForSemanticRanking();
+
+  if (result.error) {
+    alert(result.error);
+    return;
+  }
+
+  if (!result.content || result.content.trim() === '') {
+    alert('No branches to export.');
+    return;
+  }
+
+  const blob = new Blob([result.content], { type: 'text/plain' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'substitution-candidates-semantic.txt';
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Event listeners for export buttons
+copySemanticBtn.addEventListener('click', copyForSemanticRanking);
+downloadSemanticBtn.addEventListener('click', downloadForSemanticRanking);
+
 // Initialize
 buildMappingGrid();
 updateAll();

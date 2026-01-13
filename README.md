@@ -76,6 +76,7 @@ hub: true
 - **ブランチ生成**: 複数の候補からすべての組み合わせを自動生成し、比較可能
 - **コンフリクト検出**: 同じ平文文字が複数の暗号文字に割り当てられた場合を視覚的に警告
 - **相互ハイライト**: テキストとマッピング表の間でホバー連動
+- **Semantic Ranking連携**: ブランチ結果を[Semantic Candidate Ranker](https://github.com/ipusiron/gematria-cipherlab)用フォーマットでエクスポート可能
 - **完全クライアントサイド**: サーバー通信なし、データはブラウザー内のみ
 
 ---
@@ -106,10 +107,37 @@ hub: true
 - ブランチ固有のマッピングはハイライト表示
 - マッピングがない文字は大文字のまま表示
 
+### エクスポート機能
+
+ブランチ結果を[Semantic Candidate Ranker](https://github.com/ipusiron/gematria-cipherlab)で意味評価するためのフォーマットでエクスポートできます。
+
+| ボタン | 機能 |
+|--------|------|
+| **Copy for Semantic Ranking** | クリップボードにコピー |
+| **Download for Semantic Ranking** | `.txt`ファイルとしてダウンロード |
+
+出力形式（1ブランチ = 1ブロック、空行区切り）:
+
+```
+branch=B1
+mapping=Q->u
+dear friend i do not know whether you are at the house
+
+branch=B2
+mapping=Q->o,X->r
+dear friend i do not know whether you are at the house
+```
+
+- `branch=`: ブランチ識別子（トレース用）
+- `mapping=`: そのブランチ固有の置換仮説のみ（共通部分は含まない）
+- 3行目: 平文候補（意味評価の対象）
+
 ---
 
 ## 🔗 関連ツール
 
+- **[Semantic Candidate Ranker (gematria-cipherlab)](https://github.com/ipusiron/gematria-cipherlab)** - 意味評価による候補ランキングツール。
+  - 本ツールのエクスポート機能で出力した候補を読み込み、Embeddingベースの意味評価でランキングできる。
 - **[Frequency Analyzer](https://github.com/ipusiron/frequency-analyzer)** - 頻度分析ツール（Day009）。
   - 換字式暗号の解析前に、文字の出現頻度を調べる際に活用できる。
 
