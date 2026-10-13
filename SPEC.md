@@ -176,3 +176,20 @@ UI and documentation MUST consistently use:
 
 Automatic scoring, ranking, or dictionary-based elimination
 are explicitly out of scope.
+
+---
+
+## 12. Mapping Persistence
+
+- JSON stores the working text and all 26 mapping rows.
+- CSV stores only the 26 mapping rows; importing CSV preserves the current working text.
+- Imports are limited to 128 KiB and are applied only after complete validation.
+- JSON requires format `substitution-mapping-mixer` and version `1`.
+- Every import must contain A-Z exactly once, lowercase fixed/candidate values, and no duplicate candidates.
+
+## 13. Candidate Actions and Contribution Breakdown
+
+- Every candidate is available through two buttons: fix that letter or exclude it.
+- Fixing a candidate clears the candidate list for that ciphertext letter.
+- The contribution breakdown lists the effective candidate factor for each branching ciphertext letter.
+- Candidates reserved by fixed or single-candidate mappings are listed as excluded and do not contribute to the upper bound.

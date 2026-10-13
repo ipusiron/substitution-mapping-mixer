@@ -20,13 +20,20 @@
       <div class="section-header">
         <label class="section-title" for="cipherInput" data-i18n="inputTitle">入力テキスト（A-Z: 暗号文文字、a-z: 確定済みの平文文字）</label>
       </div>
-      <textarea id="cipherInput" data-i18n-placeholder="inputPlaceholder" placeholder="暗号文を入力してください（例: KHOOR ZRUOG）"></textarea>
+      <textarea id="cipherInput" maxlength="20000" data-i18n-placeholder="inputPlaceholder" placeholder="暗号文を入力してください（例: KHOOR ZRUOG）"></textarea>
     </div>
 
     <div class="section">
       <div class="section-header">
         <span class="section-title" data-i18n="mappingTitle">置換マッピング</span>
+        <div class="mapping-tools" aria-label="対応表の保存と読み込み" data-i18n-aria="mappingToolsLabel">
+          <button id="saveJsonBtn" class="tool-btn" type="button" data-i18n="saveJsonButton">JSON保存</button>
+          <button id="saveCsvBtn" class="tool-btn" type="button" data-i18n="saveCsvButton">CSV保存</button>
+          <button id="loadMappingBtn" class="tool-btn tool-btn-primary" type="button" data-i18n="loadButton">読み込む</button>
+          <input id="mappingFileInput" class="visually-hidden" type="file" accept=".json,.csv,application/json,text/csv">
+        </div>
       </div>
+      <div id="importStatus" class="import-status" role="status" aria-live="polite"></div>
       <div class="mapping-section">
         <div class="mapping-grid" id="mappingGrid"></div>
         <div class="unused-section">
@@ -46,6 +53,11 @@
         </div>
       </div>
       <div id="branchStatus" class="branch-status" role="status" aria-live="polite"></div>
+      <details class="contribution-details" open>
+        <summary data-i18n="contributionTitle">分岐寄与の内訳</summary>
+        <p class="contribution-help" data-i18n="contributionHelp">固定済み文字との重複を除いた、暗号文字ごとの実効候補数です。</p>
+        <div id="contributionList" class="contribution-list"></div>
+      </details>
       <div class="branch-cards" id="branchCards">
         <div class="no-branches" data-i18n="emptyMessage">暗号文を入力し、マッピングを設定するとデコード結果が表示されます</div>
       </div>

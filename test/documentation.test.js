@@ -28,3 +28,15 @@ test('tracked documentation describes the 200-branch safety limit', () => {
   assert.match(read('README.en.md'), /200/);
   assert.match(read('SPEC.md'), /200/);
 });
+
+test('phase 2 controls and bilingual documentation are present', () => {
+  const html = read('index.html');
+  const script = read('script.js');
+  for (const id of ['saveJsonBtn', 'saveCsvBtn', 'loadMappingBtn', 'mappingFileInput', 'contributionList']) {
+    assert.match(html, new RegExp(`id="${id}"`));
+  }
+  assert.match(script, /candidateFix/);
+  assert.match(script, /candidateExclude/);
+  assert.match(read('README.md'), /JSON/);
+  assert.match(read('README.en.md'), /JSON/);
+});

@@ -81,6 +81,7 @@ Branch cards are never collapsed automatically.
 ### Per-Letter Inputs
 - **Fixed input**: Single character field for confirmed mapping
 - **Candidates input**: Multi-character field for possible mappings
+- **Candidate actions**: Tap-friendly controls to fix or exclude each entered candidate
 
 ### Visual Feedback
 - Hover highlighting syncs with decoded text
@@ -113,3 +114,12 @@ Branch cards are never collapsed automatically.
 > It is the normal operating state of this tool.
 
 The UI must remain stable as branches increase. The raw combination upper bound is shown before generation, and generation stops above 200 combinations so the page does not freeze.
+
+---
+
+## 9. Persistence and Contribution Controls
+
+- JSON save, CSV save, and load controls wrap vertically on narrow screens.
+- JSON includes the working text; CSV includes only the mapping table.
+- Import feedback is announced through a live status region.
+- The branch contribution breakdown is an open-by-default disclosure that remains usable by keyboard and touch.
