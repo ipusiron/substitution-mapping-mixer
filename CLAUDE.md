@@ -29,6 +29,8 @@ The UI follows strict layout principles (see UI_SPEC.md):
 - Mutual highlighting: hovering cipher letters in text highlights mapping table rows and vice versa
 - Branch-specific mappings should be visually emphasized in decoded output
 - Calculate the raw branch upper bound before generation and stop above 200 combinations
+- Validate JSON/CSV imports completely before replacing current state
+- Candidate fix/exclude controls must remain usable by touch and keyboard
 
 ## Design Philosophy
 

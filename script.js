@@ -5,7 +5,8 @@ const state = {
   inputText: '',
   mappings: Logic.createMappings(),
   highlightedCipher: null,
-  language: 'ja'
+  language: 'ja',
+  notice: null
 };
 
 const messages = {
@@ -15,8 +16,26 @@ const messages = {
     inputTitle: '入力テキスト（A-Z: 暗号文文字、a-z: 確定済みの平文文字）',
     inputPlaceholder: '暗号文を入力してください（例: KHOOR ZRUOG）',
     mappingTitle: '置換マッピング',
+    mappingToolsLabel: '対応表の保存と読み込み',
+    saveJsonButton: 'JSON保存',
+    saveCsvButton: 'CSV保存',
+    loadButton: '読み込む',
+    savedJson: '作業テキストと対応表をJSONで保存しました。',
+    savedCsv: '対応表をCSVで保存しました。',
+    loadedJson: 'JSONから作業テキストと対応表を読み込みました。',
+    loadedCsv: 'CSVから対応表を読み込みました。入力テキストは変更していません。',
+    importTooLarge: 'ファイルが大きすぎます（上限128 KiB）。',
+    importUnsupported: 'JSONまたはCSVファイルを選択してください。',
+    importInvalid: 'ファイルの形式または内容が不正です。現在の状態は変更していません。',
+    candidateFix: letter => `${letter} を確定`,
+    candidateExclude: letter => `${letter} を除外`,
     unusedTitle: '未使用の平文文字',
     branchTitle: 'ブランチ結果',
+    contributionTitle: '分岐寄与の内訳',
+    contributionHelp: '固定済み文字との重複を除いた、暗号文字ごとの実効候補数です。',
+    contributionEmpty: '複数候補による分岐はありません。',
+    contributionItem: (cipher, count, candidates) => `${cipher} × ${count}: ${candidates || 'なし'}`,
+    contributionExcluded: letters => `（確定済みのため除外: ${letters}）`,
     copyButton: '意味評価用にコピー',
     copyTitle: 'ブランチ結果を意味評価用形式でコピー',
     downloadButton: '意味評価用にダウンロード',
@@ -43,8 +62,26 @@ const messages = {
     inputTitle: 'Working text (A-Z: ciphertext, a-z: confirmed plaintext)',
     inputPlaceholder: 'Enter ciphertext (example: KHOOR ZRUOG)',
     mappingTitle: 'Substitution mappings',
+    mappingToolsLabel: 'Save and load the mapping table',
+    saveJsonButton: 'Save JSON',
+    saveCsvButton: 'Save CSV',
+    loadButton: 'Load',
+    savedJson: 'Saved the working text and mappings as JSON.',
+    savedCsv: 'Saved the mappings as CSV.',
+    loadedJson: 'Loaded the working text and mappings from JSON.',
+    loadedCsv: 'Loaded the mappings from CSV. The working text was not changed.',
+    importTooLarge: 'The file is too large (maximum 128 KiB).',
+    importUnsupported: 'Select a JSON or CSV file.',
+    importInvalid: 'The file format or content is invalid. The current state was not changed.',
+    candidateFix: letter => `Fix as ${letter}`,
+    candidateExclude: letter => `Exclude ${letter}`,
     unusedTitle: 'Unused plaintext letters',
     branchTitle: 'Branch results',
+    contributionTitle: 'Branch contribution breakdown',
+    contributionHelp: 'Effective candidate counts after removing letters reserved by resolved mappings.',
+    contributionEmpty: 'There are no multi-candidate branches.',
+    contributionItem: (cipher, count, candidates) => `${cipher} × ${count}: ${candidates || 'none'}`,
+    contributionExcluded: letters => `(excluded because already resolved: ${letters})`,
     copyButton: 'Copy for semantic review',
     copyTitle: 'Copy branches in the semantic-review format',
     downloadButton: 'Download for semantic review',
@@ -73,7 +110,13 @@ const branchCount = document.getElementById('branchCount');
 const branchStatus = document.getElementById('branchStatus');
 const mappingGrid = document.getElementById('mappingGrid');
 const unusedLetters = document.getElementById('unusedLetters');
+const contributionList = document.getElementById('contributionList');
+const importStatus = document.getElementById('importStatus');
 const languageBtn = document.getElementById('languageBtn');
+const saveJsonBtn = document.getElementById('saveJsonBtn');
+const saveCsvBtn = document.getElementById('saveCsvBtn');
+const loadMappingBtn = document.getElementById('loadMappingBtn');
+const mappingFileInput = document.getElementById('mappingFileInput');
 const copySemanticBtn = document.getElementById('copySemanticBtn');
 const downloadSemanticBtn = document.getElementById('downloadSemanticBtn');
 
@@ -110,6 +153,10 @@ function buildMappingGrid() {
     }
 
     item.append(cipher, inputs);
+    const candidateActions = document.createElement('div');
+    candidateActions.className = 'candidate-actions';
+    item.appendChild(candidateActions);
+    renderCandidateActions(item, letter);
     item.addEventListener('mouseenter', () => highlightCipher(letter));
     item.addEventListener('mouseleave', () => highlightCipher(null));
     mappingGrid.appendChild(item);
@@ -127,7 +174,45 @@ function handleMappingInput(event) {
     state.mappings[cipher].candidates = [...value];
   }
   event.target.value = value;
+  renderCandidateActions(event.target.closest('.mapping-item'), cipher);
   updateAll();
+}
+
+function renderCandidateActions(item, cipher) {
+  const container = item.querySelector('.candidate-actions');
+  container.replaceChildren();
+  for (const candidate of state.mappings[cipher].candidates) {
+    const group = document.createElement('span');
+    group.className = 'candidate-action';
+    const fix = document.createElement('button');
+    fix.type = 'button';
+    fix.className = 'candidate-fix';
+    fix.textContent = candidate;
+    fix.title = t('candidateFix', candidate);
+    fix.setAttribute('aria-label', `${cipher}: ${t('candidateFix', candidate)}`);
+    fix.addEventListener('click', () => {
+      state.mappings[cipher].fixed = candidate;
+      state.mappings[cipher].candidates = [];
+      item.querySelector('.mapping-input.fixed').value = candidate;
+      item.querySelector('.mapping-input.candidates').value = '';
+      renderCandidateActions(item, cipher);
+      updateAll();
+    });
+    const exclude = document.createElement('button');
+    exclude.type = 'button';
+    exclude.className = 'candidate-exclude';
+    exclude.textContent = '×';
+    exclude.title = t('candidateExclude', candidate);
+    exclude.setAttribute('aria-label', `${cipher}: ${t('candidateExclude', candidate)}`);
+    exclude.addEventListener('click', () => {
+      state.mappings[cipher].candidates = state.mappings[cipher].candidates.filter(value => value !== candidate);
+      item.querySelector('.mapping-input.candidates').value = state.mappings[cipher].candidates.join('');
+      renderCandidateActions(item, cipher);
+      updateAll();
+    });
+    group.append(fix, exclude);
+    container.appendChild(group);
+  }
 }
 
 function getPlaintextLettersInInput() {
@@ -176,8 +261,34 @@ function branchLabel(branch, status) {
   return t(status === 'none' ? 'noValidLabel' : 'baseLabel');
 }
 
+function renderContributions(plan) {
+  const entries = [...plan.entries].sort((a, b) => b.candidates.length - a.candidates.length || a.cipher.localeCompare(b.cipher));
+  if (entries.length === 0) {
+    const empty = document.createElement('span');
+    empty.className = 'contribution-empty';
+    empty.textContent = t('contributionEmpty');
+    contributionList.replaceChildren(empty);
+    return;
+  }
+  const items = entries.map(entry => {
+    const item = document.createElement('span');
+    item.className = 'contribution-item';
+    const main = document.createElement('strong');
+    main.textContent = t('contributionItem', entry.cipher, entry.candidates.length, entry.candidates.join(''));
+    item.appendChild(main);
+    if (entry.excluded.length) {
+      const excluded = document.createElement('small');
+      excluded.textContent = t('contributionExcluded', entry.excluded.join(''));
+      item.appendChild(excluded);
+    }
+    return item;
+  });
+  contributionList.replaceChildren(...items);
+}
+
 function renderBranches() {
   const result = Logic.generateBranches(state.mappings);
+  renderContributions(result.plan);
   const count = result.status === 'limit' ? 0 : result.branches.length;
   branchCount.textContent = t('branches', count);
   branchStatus.className = 'branch-status';
@@ -241,6 +352,61 @@ function updateAll() {
   return renderBranches();
 }
 
+function showImportStatus(key, isError = false) {
+  state.notice = { key, isError };
+  importStatus.textContent = t(key);
+  importStatus.classList.toggle('error', isError);
+}
+
+function downloadText(content, type, filename) {
+  const url = URL.createObjectURL(new Blob([content], { type }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = filename;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function saveMappingJSON() {
+  const content = Logic.serializeMappingJSON(state.inputText, state.mappings);
+  downloadText(content, 'application/json;charset=utf-8', 'substitution-mapping.json');
+  showImportStatus('savedJson');
+}
+
+function saveMappingCSV() {
+  const content = `\uFEFF${Logic.serializeMappingCSV(state.mappings)}`;
+  downloadText(content, 'text/csv;charset=utf-8', 'substitution-mapping.csv');
+  showImportStatus('savedCsv');
+}
+
+async function loadMappingFile(file) {
+  if (file.size > 128 * 1024) {
+    showImportStatus('importTooLarge', true);
+    return;
+  }
+  const extension = file.name.toLowerCase().split('.').pop();
+  if (extension !== 'json' && extension !== 'csv') {
+    showImportStatus('importUnsupported', true);
+    return;
+  }
+  try {
+    const text = await file.text();
+    const imported = extension === 'json' ? Logic.parseMappingJSON(text) : Logic.parseMappingCSV(text);
+    state.mappings = imported.mappings;
+    if (imported.inputText !== null) {
+      state.inputText = imported.inputText;
+      cipherInput.value = imported.inputText;
+    }
+    buildMappingGrid();
+    updateAll();
+    showImportStatus(extension === 'json' ? 'loadedJson' : 'loadedCsv');
+  } catch (error) {
+    showImportStatus('importInvalid', true);
+  }
+}
+
 function formatBranchesForSemanticRanking() {
   const result = Logic.generateBranches(state.mappings);
   if (result.status === 'limit') return { error: t('tooManyExport') };
@@ -273,14 +439,7 @@ async function copyForSemanticRanking() {
 function downloadForSemanticRanking() {
   const result = formatBranchesForSemanticRanking();
   if (result.error) return window.alert(result.error);
-  const url = URL.createObjectURL(new Blob([result.content], { type: 'text/plain;charset=utf-8' }));
-  const anchor = document.createElement('a');
-  anchor.href = url;
-  anchor.download = 'substitution-candidates-semantic.txt';
-  document.body.appendChild(anchor);
-  anchor.click();
-  anchor.remove();
-  URL.revokeObjectURL(url);
+  downloadText(result.content, 'text/plain;charset=utf-8', 'substitution-candidates-semantic.txt');
 }
 
 function applyLanguage() {
@@ -294,8 +453,12 @@ function applyLanguage() {
   document.querySelectorAll('[data-i18n-title]').forEach(element => {
     element.title = t(element.dataset.i18nTitle);
   });
+  document.querySelectorAll('[data-i18n-aria]').forEach(element => {
+    element.setAttribute('aria-label', t(element.dataset.i18nAria));
+  });
   languageBtn.textContent = state.language === 'ja' ? 'English' : '日本語';
   languageBtn.setAttribute('aria-label', state.language === 'ja' ? 'Switch to English' : '日本語に切り替える');
+  if (state.notice) showImportStatus(state.notice.key, state.notice.isError);
   buildMappingGrid();
   updateAll();
 }
@@ -307,6 +470,16 @@ cipherInput.addEventListener('input', () => {
 languageBtn.addEventListener('click', () => {
   state.language = state.language === 'ja' ? 'en' : 'ja';
   applyLanguage();
+});
+saveJsonBtn.addEventListener('click', saveMappingJSON);
+saveCsvBtn.addEventListener('click', saveMappingCSV);
+loadMappingBtn.addEventListener('click', () => {
+  mappingFileInput.value = '';
+  mappingFileInput.click();
+});
+mappingFileInput.addEventListener('change', () => {
+  const [file] = mappingFileInput.files;
+  if (file) loadMappingFile(file);
 });
 copySemanticBtn.addEventListener('click', copyForSemanticRanking);
 downloadSemanticBtn.addEventListener('click', downloadForSemanticRanking);

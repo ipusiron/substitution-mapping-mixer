@@ -85,3 +85,66 @@ test('decode preserves lowercase, punctuation, and unmapped uppercase', () => {
   assert.equal(decoded[0].isBranchSpecific, true);
   assert.equal(decoded[4].type, 'undecoded-raw');
 });
+
+test('branch plan reports effective and excluded candidates', () => {
+  const mappings = Logic.createMappings();
+  mappings.A.fixed = 'a';
+  mappings.B.candidates = ['a', 'b', 'c'];
+  const plan = Logic.planBranches(mappings);
+  assert.deepEqual(plan.entries[0], {
+    cipher: 'B',
+    candidates: ['b', 'c'],
+    originalCandidates: ['a', 'b', 'c'],
+    excluded: ['a']
+  });
+  assert.equal(plan.upperBound, 2n);
+});
+
+test('JSON export and import preserve working text and mappings', () => {
+  const mappings = Logic.createMappings();
+  mappings.Q.fixed = 'e';
+  mappings.X.candidates = ['a', 'o'];
+  const text = Logic.serializeMappingJSON('QX\nknown', mappings);
+  const restored = Logic.parseMappingJSON(text);
+  assert.equal(restored.inputText, 'QX\nknown');
+  assert.deepEqual(restored.mappings, mappings);
+});
+
+test('JSON import rejects unknown formats and duplicate candidates', () => {
+  const mappings = Logic.createMappings();
+  const valid = JSON.parse(Logic.serializeMappingJSON('', mappings));
+  assert.throws(() => Logic.parseMappingJSON(JSON.stringify({ ...valid, format: 'other' })), /invalid-format/);
+  valid.mappings.A.candidates = ['a', 'a'];
+  assert.throws(() => Logic.parseMappingJSON(JSON.stringify(valid)), /duplicate-candidates/);
+});
+
+test('JSON import rejects oversized working text', () => {
+  const mappings = Logic.createMappings();
+  const data = {
+    format: Logic.DATA_FORMAT,
+    version: Logic.DATA_VERSION,
+    inputText: 'A'.repeat(Logic.MAX_INPUT_LENGTH + 1),
+    mappings
+  };
+  assert.throws(() => Logic.parseMappingJSON(JSON.stringify(data)), /invalid-input-text/);
+});
+
+test('CSV export and import preserve all 26 mappings', () => {
+  const mappings = Logic.createMappings();
+  mappings.A.fixed = 'x';
+  mappings.Z.candidates = ['a', 'b', 'c'];
+  const csv = Logic.serializeMappingCSV(mappings);
+  const restored = Logic.parseMappingCSV(`\uFEFF${csv.replace(/\n/g, '\r\n')}`);
+  assert.equal(restored.inputText, null);
+  assert.deepEqual(restored.mappings, mappings);
+});
+
+test('CSV import rejects missing, duplicate, and invalid rows', () => {
+  const mappings = Logic.createMappings();
+  const lines = Logic.serializeMappingCSV(mappings).split('\n');
+  assert.throws(() => Logic.parseMappingCSV(lines.slice(0, -1).join('\n')), /invalid-csv-layout/);
+  lines[2] = lines[1];
+  assert.throws(() => Logic.parseMappingCSV(lines.join('\n')), /invalid-csv-row/);
+  const invalid = Logic.serializeMappingCSV(mappings).replace('A,,', 'A,1,');
+  assert.throws(() => Logic.parseMappingCSV(invalid), /invalid-fixed/);
+});

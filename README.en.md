@@ -66,6 +66,9 @@ The tool runs entirely in your browser.
 - Generate branches only after checking a 200-combination safety limit
 - Enforce one-to-one plaintext assignments within generated branches
 - Highlight conflicting confirmed assignments without hiding the user's input
+- Fix or exclude each candidate through tap-friendly controls
+- Show each ciphertext letter's effective contribution to branch growth
+- Save and restore mappings in JSON or CSV
 - Link ciphertext occurrences with mapping rows through hover highlighting
 - Copy or download branches for [Semantic Candidate Ranker](https://github.com/ipusiron/semantic-candidate-ranker)
 - Switch the interface between Japanese and English
@@ -94,6 +97,18 @@ A single candidate is treated as resolved. Two or more candidates participate in
 
 The displayed branch count is calculated after the one-to-one constraint is applied. The upper bound can therefore be larger than the number of displayed branches.
 
+Candidate chips appear below a row after you enter candidates. Select the letter button to make it fixed, or select the adjacent × button to remove only that candidate.
+
+### Save and load mappings
+
+| Action | Saved data | Behavior when loaded |
+|---|---|---|
+| **Save JSON** | Working text and all A-Z mappings | Restores the text and mappings |
+| **Save CSV** | All A-Z mappings | Restores mappings without changing the working text |
+| **Load** | A `.json` or `.csv` file | Validates all 26 rows before applying anything |
+
+Imports are limited to 128 KiB. The tool validates the format identifier, version, A-Z rows, lowercase letters, and duplicate candidates. Invalid files do not change the current state, and file contents are not sent to a server.
+
 ### Export
 
 The copy and download buttons produce blocks accepted by [Semantic Candidate Ranker](https://github.com/ipusiron/semantic-candidate-ranker):
@@ -110,7 +125,9 @@ The mapping line contains only the selections specific to that branch. The tool 
 
 ## 🎯 Use case
 
-Suppose frequency analysis suggests the fixed mapping `Q → e`, while `X → {a, o}` and `Z → {r, s}` remain unresolved. The tool lays out the four resulting plaintext hypotheses in a stable vertical list so that you can compare them manually.
+Suppose frequency analysis suggests the fixed mapping `Q → e`, while `X → {a, o}` and `Z → {r, s}` remain unresolved. The tool lays out the four resulting plaintext hypotheses in a stable vertical list so that you can compare them manually. Fixing `X → a` through its candidate chip immediately narrows the list to two branches.
+
+Use JSON to pause and resume with the working text intact. Use CSV when you want to exchange only the A-Z table. If the contribution breakdown shows `A × 5` and `X × 2`, reducing A first has the larger effect on the upper bound.
 
 Use context or a separate frequency-analysis tool to narrow large candidate sets below the 200-combination limit. Semantic ranking in a related tool can help order candidates, but it does not establish that any candidate is correct.
 
