@@ -19,7 +19,7 @@ Substitution Mapping Mixer is a web-based workbench for **manual analysis of sub
 The UI follows strict layout principles (see UI_SPEC.md):
 1. Branch results are always the primary content
 2. Horizontal space must never be contested—vertical scrolling only
-3. Full-width layout; substitution table is a slide-in overlay panel
+3. Full-width layout; the substitution table remains visible between the input and branch results
 4. Branch cards stack vertically and are never auto-collapsed
 
 ## Implementation Notes
@@ -28,6 +28,7 @@ The UI follows strict layout principles (see UI_SPEC.md):
 - Undecoded characters render as a unified marker (e.g., `?`)
 - Mutual highlighting: hovering cipher letters in text highlights mapping table rows and vice versa
 - Branch-specific mappings should be visually emphasized in decoded output
+- Calculate the raw branch upper bound before generation and stop above 200 combinations
 
 ## Design Philosophy
 

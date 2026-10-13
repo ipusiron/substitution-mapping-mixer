@@ -86,7 +86,8 @@ Example:
 - Single-candidate entries are treated as fixed (no branching)
 - Each branch selects exactly one candidate per branching character
 - Branches violating monoalphabetic constraints are discarded
-- No artificial limit on branch count
+- The raw combination upper bound is calculated before generation
+- Generation stops when that upper bound exceeds 200 branches
 - If no valid branches exist, a "base mapping" is shown
 
 ### 5.3 Branch Labels

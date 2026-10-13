@@ -1,487 +1,314 @@
-// State
+'use strict';
+
+const Logic = window.SubstitutionLogic;
 const state = {
   inputText: '',
-  mappings: {},
-  highlightedCipher: null
+  mappings: Logic.createMappings(),
+  highlightedCipher: null,
+  language: 'ja'
 };
 
-// Initialize mappings for A-Z
-for (let i = 0; i < 26; i++) {
-  const letter = String.fromCharCode(65 + i);
-  state.mappings[letter] = { fixed: '', candidates: [] };
-}
+const messages = {
+  ja: {
+    subtitle: '換字式暗号の置換表の手動解析支援ツール',
+    scopeNote: '自動解読や候補の順位付けは行いません。人が仮説を比較するための作業台です。',
+    inputTitle: '入力テキスト（A-Z: 暗号文文字、a-z: 確定済みの平文文字）',
+    inputPlaceholder: '暗号文を入力してください（例: KHOOR ZRUOG）',
+    mappingTitle: '置換マッピング',
+    unusedTitle: '未使用の平文文字',
+    branchTitle: 'ブランチ結果',
+    copyButton: '意味評価用にコピー',
+    copyTitle: 'ブランチ結果を意味評価用形式でコピー',
+    downloadButton: '意味評価用にダウンロード',
+    downloadTitle: 'ブランチ結果を意味評価用形式でダウンロード',
+    emptyMessage: '暗号文を入力し、マッピングを設定するとデコード結果が表示されます',
+    fixedPlaceholder: '確定',
+    candidatesPlaceholder: '候補',
+    candidateOnly: '候補のみで使用',
+    completelyUnused: '完全に未使用',
+    branches: count => `${count} ブランチ`,
+    estimate: count => `生成前の組合せ上限: ${count}`,
+    limit: (count, max) => `組合せ上限が${count}通りのため生成を停止しました（最大${max}通り）。候補を減らしてください。`,
+    noValid: '一対一の対応を満たすブランチがありません。競合箇所を確認してください。',
+    baseLabel: 'ベースマッピング',
+    noValidLabel: 'ベースマッピング（有効なブランチなし）',
+    copied: 'コピーしました',
+    tooManyExport: '候補が多すぎるためエクスポートできません。候補を減らしてください。',
+    noExport: 'エクスポートできるブランチがありません。',
+    copyFailed: 'クリップボードへコピーできませんでした。ブラウザーの権限を確認してください。'
+  },
+  en: {
+    subtitle: 'Manual substitution-cipher mapping workbench',
+    scopeNote: 'This tool does not solve or rank candidates. It is a workbench for comparing hypotheses by hand.',
+    inputTitle: 'Working text (A-Z: ciphertext, a-z: confirmed plaintext)',
+    inputPlaceholder: 'Enter ciphertext (example: KHOOR ZRUOG)',
+    mappingTitle: 'Substitution mappings',
+    unusedTitle: 'Unused plaintext letters',
+    branchTitle: 'Branch results',
+    copyButton: 'Copy for semantic review',
+    copyTitle: 'Copy branches in the semantic-review format',
+    downloadButton: 'Download for semantic review',
+    downloadTitle: 'Download branches in the semantic-review format',
+    emptyMessage: 'Enter ciphertext and mappings to display decoded branches.',
+    fixedPlaceholder: 'Fixed',
+    candidatesPlaceholder: 'Candidates',
+    candidateOnly: 'Used only as a candidate',
+    completelyUnused: 'Completely unused',
+    branches: count => `${count} ${count === 1 ? 'branch' : 'branches'}`,
+    estimate: count => `Pre-generation combination upper bound: ${count}`,
+    limit: (count, max) => `Generation stopped: the upper bound is ${count} combinations (maximum ${max}). Reduce the candidates.`,
+    noValid: 'No branch satisfies the one-to-one mapping. Review the highlighted conflicts.',
+    baseLabel: 'Base mapping',
+    noValidLabel: 'Base mapping (no valid branches)',
+    copied: 'Copied',
+    tooManyExport: 'There are too many candidates to export. Reduce the candidates.',
+    noExport: 'There are no branches to export.',
+    copyFailed: 'Could not copy to the clipboard. Check the browser permission.'
+  }
+};
 
-// DOM Elements
 const cipherInput = document.getElementById('cipherInput');
 const branchCards = document.getElementById('branchCards');
 const branchCount = document.getElementById('branchCount');
+const branchStatus = document.getElementById('branchStatus');
 const mappingGrid = document.getElementById('mappingGrid');
 const unusedLetters = document.getElementById('unusedLetters');
+const languageBtn = document.getElementById('languageBtn');
+const copySemanticBtn = document.getElementById('copySemanticBtn');
+const downloadSemanticBtn = document.getElementById('downloadSemanticBtn');
 
-// Build mapping grid
+function t(key, ...args) {
+  const value = messages[state.language][key];
+  return typeof value === 'function' ? value(...args) : value;
+}
+
 function buildMappingGrid() {
-  mappingGrid.innerHTML = '';
-
-  for (let i = 0; i < 26; i++) {
-    const letter = String.fromCharCode(65 + i);
-    const mapping = state.mappings[letter];
-
+  mappingGrid.replaceChildren();
+  for (const [letter, mapping] of Object.entries(state.mappings)) {
     const item = document.createElement('div');
     item.className = 'mapping-item';
     item.dataset.cipher = letter;
 
-    item.innerHTML = `
-      <span class="cipher-letter">${letter}</span>
-      <div class="mapping-inputs">
-        <input type="text"
-               class="mapping-input fixed"
-               data-cipher="${letter}"
-               data-type="fixed"
-               value="${mapping.fixed}"
-               maxlength="1"
-               placeholder="確定">
-        <input type="text"
-               class="mapping-input candidates"
-               data-cipher="${letter}"
-               data-type="candidates"
-               value="${mapping.candidates.join('')}"
-               placeholder="候補">
-      </div>
-    `;
+    const cipher = document.createElement('span');
+    cipher.className = 'cipher-letter';
+    cipher.textContent = letter;
 
-    // Hover events for mutual highlighting
+    const inputs = document.createElement('div');
+    inputs.className = 'mapping-inputs';
+    for (const type of ['fixed', 'candidates']) {
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = `mapping-input ${type}`;
+      input.dataset.cipher = letter;
+      input.dataset.type = type;
+      input.value = type === 'fixed' ? mapping.fixed : mapping.candidates.join('');
+      input.placeholder = t(type === 'fixed' ? 'fixedPlaceholder' : 'candidatesPlaceholder');
+      input.setAttribute('aria-label', `${letter} ${input.placeholder}`);
+      if (type === 'fixed') input.maxLength = 1;
+      input.addEventListener('input', handleMappingInput);
+      inputs.appendChild(input);
+    }
+
+    item.append(cipher, inputs);
     item.addEventListener('mouseenter', () => highlightCipher(letter));
     item.addEventListener('mouseleave', () => highlightCipher(null));
-
     mappingGrid.appendChild(item);
   }
-
-  // Input change listeners
-  mappingGrid.querySelectorAll('.mapping-input').forEach(input => {
-    input.addEventListener('input', handleMappingInput);
-  });
 }
 
-function handleMappingInput(e) {
-  const cipher = e.target.dataset.cipher;
-  const type = e.target.dataset.type;
-  let value = e.target.value.toLowerCase().replace(/[^a-z]/g, '');
-
+function handleMappingInput(event) {
+  const { cipher, type } = event.target.dataset;
+  let value = event.target.value.toLowerCase().replace(/[^a-z]/g, '');
   if (type === 'fixed') {
     value = value.slice(0, 1);
-    e.target.value = value;
     state.mappings[cipher].fixed = value;
   } else {
-    // Remove duplicates
-    value = [...new Set(value.split(''))].join('');
-    e.target.value = value;
-    state.mappings[cipher].candidates = value.split('');
+    value = [...new Set(value)].join('');
+    state.mappings[cipher].candidates = [...value];
   }
-
+  event.target.value = value;
   updateAll();
 }
 
-// Get plaintext letters used in input (lowercase)
 function getPlaintextLettersInInput() {
-  const letters = new Set();
-  for (const char of state.inputText) {
-    if (char >= 'a' && char <= 'z') {
-      letters.add(char);
-    }
-  }
-  return letters;
+  return new Set([...state.inputText].filter(char => char >= 'a' && char <= 'z'));
 }
 
-// Generate all branches
-function generateBranches() {
-  const fixedMapping = {};
-  for (const [cipher, data] of Object.entries(state.mappings)) {
-    if (data.fixed) {
-      fixedMapping[cipher] = data.fixed;
-    } else if (data.candidates.length === 1) {
-      // 候補が1つの場合は自動的にその候補を採用
-      fixedMapping[cipher] = data.candidates[0];
-    }
-  }
-
-  const candidateEntries = [];
-  for (const [cipher, data] of Object.entries(state.mappings)) {
-    // 候補が2つ以上の場合のみブランチ分岐
-    if (!data.fixed && data.candidates.length >= 2) {
-      candidateEntries.push({ cipher, candidates: data.candidates });
-    }
-  }
-
-  if (candidateEntries.length === 0) {
-    return [{ mapping: { ...fixedMapping }, label: 'ベースマッピング', isBase: true }];
-  }
-
-  const branches = [];
-
-  function generateCombinations(index, currentMapping, currentLabel) {
-    if (index >= candidateEntries.length) {
-      const plainUsed = new Set(Object.values(fixedMapping));
-      let hasConflict = false;
-
-      for (const plain of Object.values(currentMapping)) {
-        if (plainUsed.has(plain)) {
-          hasConflict = true;
-          break;
-        }
-        plainUsed.add(plain);
-      }
-
-      const currentPlains = Object.values(currentMapping);
-      if (new Set(currentPlains).size !== currentPlains.length) {
-        hasConflict = true;
-      }
-
-      if (!hasConflict) {
-        branches.push({
-          mapping: { ...fixedMapping, ...currentMapping },
-          label: currentLabel.join(', ') || 'ベースマッピング',
-          isBase: false,
-          branchSpecific: { ...currentMapping }
-        });
-      }
-      return;
-    }
-
-    const { cipher, candidates } = candidateEntries[index];
-    for (const candidate of candidates) {
-      generateCombinations(
-        index + 1,
-        { ...currentMapping, [cipher]: candidate },
-        [...currentLabel, `${cipher}=${candidate}`]
-      );
-    }
-  }
-
-  generateCombinations(0, {}, []);
-
-  return branches.length > 0 ? branches : [{ mapping: { ...fixedMapping }, label: 'ベースマッピング（有効なブランチなし）', isBase: true }];
-}
-
-// Check for conflicts in fixed mappings
-function getFixedConflicts() {
-  const plainToCiphers = {};
-  const conflicts = new Set();
-
-  for (const [cipher, data] of Object.entries(state.mappings)) {
-    if (data.fixed) {
-      const plain = data.fixed;
-      if (!plainToCiphers[plain]) {
-        plainToCiphers[plain] = [];
-      }
-      plainToCiphers[plain].push(cipher);
-    }
-  }
-
-  for (const [plain, ciphers] of Object.entries(plainToCiphers)) {
-    if (ciphers.length > 1) {
-      ciphers.forEach(c => conflicts.add(c));
-    }
-  }
-
-  return conflicts;
-}
-
-// Decode text with a given mapping
-function decodeText(text, mapping, branchSpecific = {}) {
-  const result = [];
-
-  for (let i = 0; i < text.length; i++) {
-    const char = text[i];
-
-    if (char >= 'A' && char <= 'Z') {
-      const decoded = mapping[char];
-      const data = state.mappings[char];
-
-      if (decoded) {
-        // 確定または候補から選択された文字
-        const isBranchSpecific = branchSpecific[char] === decoded;
-        result.push({
-          original: char,
-          decoded: decoded,
-          type: 'decoded',
-          isBranchSpecific
-        });
-      } else if (!data.fixed && data.candidates.length === 0) {
-        // 確定も候補もない → 大文字のまま
-        result.push({
-          original: char,
-          decoded: char,
-          type: 'undecoded-raw',
-          isBranchSpecific: false
-        });
-      } else if (!data.fixed && data.candidates.length >= 2) {
-        // 候補が複数 → ?
-        result.push({
-          original: char,
-          decoded: '?',
-          type: 'undecoded',
-          isBranchSpecific: false
-        });
-      } else {
-        result.push({
-          original: char,
-          decoded: '?',
-          type: 'undecoded',
-          isBranchSpecific: false
-        });
-      }
-    } else if (char >= 'a' && char <= 'z') {
-      result.push({
-        original: char,
-        decoded: char,
-        type: 'original-plain',
-        isBranchSpecific: false
-      });
-    } else {
-      result.push({
-        original: char,
-        decoded: char,
-        type: 'other',
-        isBranchSpecific: false
-      });
-    }
-  }
-
-  return result;
-}
-
-// Highlight cipher letter
 function highlightCipher(cipher) {
   state.highlightedCipher = cipher;
-
   document.querySelectorAll('.mapping-item').forEach(item => {
     item.classList.toggle('highlighted', item.dataset.cipher === cipher);
   });
-
   document.querySelectorAll('.decoded-char').forEach(span => {
     span.classList.toggle('highlighted', span.dataset.cipher === cipher);
   });
 }
 
-// Update unused letters display
 function updateUnusedLetters() {
-  const usedInFixed = new Set();
-  const usedInCandidates = new Set();
-  const usedInInput = getPlaintextLettersInInput();
+  const resolved = new Set(Object.values(Logic.getResolvedMapping(state.mappings)));
+  const candidates = new Set(Object.values(state.mappings).flatMap(data => data.candidates));
+  const inInput = getPlaintextLettersInInput();
+  unusedLetters.replaceChildren();
 
-  for (const data of Object.values(state.mappings)) {
-    if (data.fixed) usedInFixed.add(data.fixed);
-    data.candidates.forEach(c => usedInCandidates.add(c));
-  }
-
-  unusedLetters.innerHTML = '';
-
-  for (let i = 0; i < 26; i++) {
+  for (let i = 0; i < 26; i += 1) {
     const letter = String.fromCharCode(97 + i);
-    const inFixed = usedInFixed.has(letter);
-    const inCandidates = usedInCandidates.has(letter);
-    const inInput = usedInInput.has(letter);
-
-    if (!inFixed && !inInput) {
-      const span = document.createElement('span');
-      span.className = 'unused-letter' + (inCandidates ? ' candidate-only' : '');
-      span.textContent = letter;
-      span.title = inCandidates ? '候補のみで使用' : '完全に未使用';
-      unusedLetters.appendChild(span);
-    }
+    if (resolved.has(letter) || inInput.has(letter)) continue;
+    const span = document.createElement('span');
+    const candidateOnly = candidates.has(letter);
+    span.className = `unused-letter${candidateOnly ? ' candidate-only' : ''}`;
+    span.textContent = letter;
+    span.title = t(candidateOnly ? 'candidateOnly' : 'completelyUnused');
+    unusedLetters.appendChild(span);
   }
 }
 
-// Update conflict highlighting
 function updateConflictHighlighting() {
-  const conflicts = getFixedConflicts();
-
+  const conflicts = Logic.getConflicts(state.mappings);
   document.querySelectorAll('.mapping-item').forEach(item => {
     item.classList.toggle('conflict', conflicts.has(item.dataset.cipher));
   });
+  return conflicts;
 }
 
-// Render branches
+function branchLabel(branch, status) {
+  const parts = Object.entries(branch.selections).map(([cipher, plain]) => `${cipher}=${plain}`);
+  if (parts.length) return parts.join(', ');
+  return t(status === 'none' ? 'noValidLabel' : 'baseLabel');
+}
+
 function renderBranches() {
-  const branches = generateBranches();
+  const result = Logic.generateBranches(state.mappings);
+  const count = result.status === 'limit' ? 0 : result.branches.length;
+  branchCount.textContent = t('branches', count);
+  branchStatus.className = 'branch-status';
+  branchStatus.textContent = t('estimate', result.plan.upperBound.toString());
 
-  branchCount.textContent = `${branches.length} ブランチ`;
-
-  if (branches.length === 0 || !state.inputText.trim()) {
-    branchCards.innerHTML = '<div class="no-branches">暗号文を入力し、マッピングを設定するとデコード結果が表示されます</div>';
-    return;
+  if (result.status === 'limit') {
+    branchStatus.classList.add('warning');
+    branchStatus.textContent = t('limit', result.plan.upperBound.toString(), result.plan.limit);
+    branchCards.replaceChildren();
+    return result;
+  }
+  if (result.status === 'none') {
+    branchStatus.classList.add('warning');
+    branchStatus.textContent = t('noValid');
+  }
+  if (!state.inputText.trim()) {
+    const empty = document.createElement('div');
+    empty.className = 'no-branches';
+    empty.textContent = t('emptyMessage');
+    branchCards.replaceChildren(empty);
+    return result;
   }
 
-  const fixedConflicts = getFixedConflicts();
-
-  branchCards.innerHTML = '';
-
-  for (const branch of branches) {
+  const conflicts = Logic.getConflicts(state.mappings);
+  const cards = result.branches.map(branch => {
     const card = document.createElement('div');
     card.className = 'branch-card';
-
     const label = document.createElement('div');
-    label.className = 'branch-label' + (branch.isBase ? ' base-only' : '');
-    label.textContent = branch.label;
-
+    label.className = `branch-label${branch.isBase ? ' base-only' : ''}`;
+    label.textContent = branchLabel(branch, result.status);
     const textDiv = document.createElement('div');
     textDiv.className = 'decoded-text';
 
-    const decoded = decodeText(state.inputText, branch.mapping, branch.branchSpecific || {});
-
-    for (const item of decoded) {
+    for (const item of Logic.decodeText(state.inputText, branch.mapping, branch.selections)) {
       if (item.type === 'other') {
-        if (item.decoded === '\n') {
-          textDiv.appendChild(document.createElement('br'));
-        } else {
-          textDiv.appendChild(document.createTextNode(item.decoded));
-        }
-      } else {
-        const span = document.createElement('span');
-        span.className = 'decoded-char ' + item.type;
-        span.textContent = item.decoded;
-        span.dataset.cipher = item.original;
-
-        if (item.isBranchSpecific) {
-          span.classList.add('branch-specific');
-        }
-
-        if (fixedConflicts.has(item.original)) {
-          span.classList.add('conflict');
-        }
-
-        if (item.original >= 'A' && item.original <= 'Z') {
-          span.addEventListener('mouseenter', () => highlightCipher(item.original));
-          span.addEventListener('mouseleave', () => highlightCipher(null));
-        }
-
-        textDiv.appendChild(span);
+        textDiv.appendChild(document.createTextNode(item.decoded));
+        continue;
       }
+      const span = document.createElement('span');
+      span.className = `decoded-char ${item.type}`;
+      span.textContent = item.decoded;
+      span.dataset.cipher = item.original;
+      if (item.isBranchSpecific) span.classList.add('branch-specific');
+      if (conflicts.has(item.original)) span.classList.add('conflict');
+      if (item.original >= 'A' && item.original <= 'Z') {
+        span.addEventListener('mouseenter', () => highlightCipher(item.original));
+        span.addEventListener('mouseleave', () => highlightCipher(null));
+      }
+      textDiv.appendChild(span);
     }
-
-    card.appendChild(label);
-    card.appendChild(textDiv);
-    branchCards.appendChild(card);
-  }
+    card.append(label, textDiv);
+    return card;
+  });
+  branchCards.replaceChildren(...cards);
+  return result;
 }
 
-// Update all displays
 function updateAll() {
   updateUnusedLetters();
   updateConflictHighlighting();
-  renderBranches();
+  return renderBranches();
 }
 
-// Input change handler
+function formatBranchesForSemanticRanking() {
+  const result = Logic.generateBranches(state.mappings);
+  if (result.status === 'limit') return { error: t('tooManyExport') };
+  if (!state.inputText.trim()) return { error: t('noExport') };
+  const blocks = result.branches.map((branch, index) => {
+    const mappings = Object.entries(branch.selections).map(([cipher, plain]) => `${cipher}->${plain}`).join(',');
+    const plaintext = Logic.decodeText(state.inputText, branch.mapping, branch.selections).map(item => item.decoded).join('');
+    return [`branch=B${index + 1}`, `mapping=${mappings}`, plaintext].join('\n');
+  });
+  return { content: blocks.join('\n\n') };
+}
+
+async function copyForSemanticRanking() {
+  const result = formatBranchesForSemanticRanking();
+  if (result.error) return window.alert(result.error);
+  try {
+    await navigator.clipboard.writeText(result.content);
+    const original = t('copyButton');
+    copySemanticBtn.textContent = t('copied');
+    copySemanticBtn.disabled = true;
+    window.setTimeout(() => {
+      copySemanticBtn.textContent = original;
+      copySemanticBtn.disabled = false;
+    }, 2000);
+  } catch (error) {
+    window.alert(t('copyFailed'));
+  }
+}
+
+function downloadForSemanticRanking() {
+  const result = formatBranchesForSemanticRanking();
+  if (result.error) return window.alert(result.error);
+  const url = URL.createObjectURL(new Blob([result.content], { type: 'text/plain;charset=utf-8' }));
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = 'substitution-candidates-semantic.txt';
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  URL.revokeObjectURL(url);
+}
+
+function applyLanguage() {
+  document.documentElement.lang = state.language;
+  document.querySelectorAll('[data-i18n]').forEach(element => {
+    element.textContent = t(element.dataset.i18n);
+  });
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(element => {
+    element.placeholder = t(element.dataset.i18nPlaceholder);
+  });
+  document.querySelectorAll('[data-i18n-title]').forEach(element => {
+    element.title = t(element.dataset.i18nTitle);
+  });
+  languageBtn.textContent = state.language === 'ja' ? 'English' : '日本語';
+  languageBtn.setAttribute('aria-label', state.language === 'ja' ? 'Switch to English' : '日本語に切り替える');
+  buildMappingGrid();
+  updateAll();
+}
+
 cipherInput.addEventListener('input', () => {
   state.inputText = cipherInput.value;
   updateAll();
 });
-
-// Export buttons
-const copySemanticBtn = document.getElementById('copySemanticBtn');
-const downloadSemanticBtn = document.getElementById('downloadSemanticBtn');
-
-// Format branches for Semantic Ranking export
-function formatBranchesForSemanticRanking() {
-  const branches = generateBranches();
-
-  // Check 200 candidates limit
-  if (branches.length > 200) {
-    return { error: 'Too many candidates (>200). Please narrow down results.' };
-  }
-
-  const blocks = [];
-
-  for (let i = 0; i < branches.length; i++) {
-    const branch = branches[i];
-    const branchLabel = `B${i + 1}`;
-
-    // Generate mapping line (branch-specific substitutions only)
-    const mappingParts = [];
-    if (branch.branchSpecific) {
-      for (const [cipher, plain] of Object.entries(branch.branchSpecific)) {
-        mappingParts.push(`${cipher}->${plain}`);
-      }
-    }
-    const mappingLine = mappingParts.join(',');
-
-    // Generate plaintext candidate (decoded text as string)
-    const decoded = decodeText(state.inputText, branch.mapping, branch.branchSpecific || {});
-    const plaintextCandidate = decoded.map(item => item.decoded).join('');
-
-    // Build block
-    const block = [
-      `branch=${branchLabel}`,
-      `mapping=${mappingLine}`,
-      plaintextCandidate
-    ].join('\n');
-
-    blocks.push(block);
-  }
-
-  // Join blocks with empty line separator, use LF
-  return { content: blocks.join('\n\n') };
-}
-
-// Copy for Semantic Ranking
-async function copyForSemanticRanking() {
-  const result = formatBranchesForSemanticRanking();
-
-  if (result.error) {
-    alert(result.error);
-    return;
-  }
-
-  if (!result.content || result.content.trim() === '') {
-    alert('No branches to export.');
-    return;
-  }
-
-  try {
-    await navigator.clipboard.writeText(result.content);
-    // Show success message
-    const originalText = copySemanticBtn.textContent;
-    copySemanticBtn.textContent = 'Copied (Semantic Ranking format)';
-    copySemanticBtn.disabled = true;
-    setTimeout(() => {
-      copySemanticBtn.textContent = originalText;
-      copySemanticBtn.disabled = false;
-    }, 2000);
-  } catch (err) {
-    alert('Failed to copy to clipboard. Please check browser permissions.');
-  }
-}
-
-// Download for Semantic Ranking
-function downloadForSemanticRanking() {
-  const result = formatBranchesForSemanticRanking();
-
-  if (result.error) {
-    alert(result.error);
-    return;
-  }
-
-  if (!result.content || result.content.trim() === '') {
-    alert('No branches to export.');
-    return;
-  }
-
-  const blob = new Blob([result.content], { type: 'text/plain' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = 'substitution-candidates-semantic.txt';
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-
-// Event listeners for export buttons
+languageBtn.addEventListener('click', () => {
+  state.language = state.language === 'ja' ? 'en' : 'ja';
+  applyLanguage();
+});
 copySemanticBtn.addEventListener('click', copyForSemanticRanking);
 downloadSemanticBtn.addEventListener('click', downloadForSemanticRanking);
 
-// Initialize
-buildMappingGrid();
-updateAll();
+applyLanguage();
