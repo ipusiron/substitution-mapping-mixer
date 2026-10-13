@@ -3,29 +3,34 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self'; script-src 'self'; img-src 'self' data:; connect-src 'none'; object-src 'none'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
   <title>Substitution Mapping Mixer</title>
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
   <div class="container">
-    <h1>Substitution Mapping Mixer</h1>
-    <p class="subtitle">換字式暗号の置換表の手動解析支援ツール</p>
+    <header class="page-header">
+      <button id="languageBtn" class="language-btn" type="button" aria-label="Switch to English">English</button>
+      <h1>Substitution Mapping Mixer</h1>
+      <p class="subtitle" data-i18n="subtitle">換字式暗号の置換表の手動解析支援ツール</p>
+      <p class="scope-note" data-i18n="scopeNote">自動解読や候補の順位付けは行いません。人が仮説を比較するための作業台です。</p>
+    </header>
 
     <div class="section">
       <div class="section-header">
-        <span class="section-title">入力テキスト（A-Z: 暗号文文字、a-z: 確定済みの平文文字）</span>
+        <label class="section-title" for="cipherInput" data-i18n="inputTitle">入力テキスト（A-Z: 暗号文文字、a-z: 確定済みの平文文字）</label>
       </div>
-      <textarea id="cipherInput" placeholder="暗号文を入力してください（例: KHOOR ZRUOG）"></textarea>
+      <textarea id="cipherInput" data-i18n-placeholder="inputPlaceholder" placeholder="暗号文を入力してください（例: KHOOR ZRUOG）"></textarea>
     </div>
 
     <div class="section">
       <div class="section-header">
-        <span class="section-title">置換マッピング</span>
+        <span class="section-title" data-i18n="mappingTitle">置換マッピング</span>
       </div>
       <div class="mapping-section">
         <div class="mapping-grid" id="mappingGrid"></div>
         <div class="unused-section">
-          <div class="unused-label">未使用の平文文字</div>
+          <div class="unused-label" data-i18n="unusedTitle">未使用の平文文字</div>
           <div class="unused-letters" id="unusedLetters"></div>
         </div>
       </div>
@@ -33,15 +38,16 @@
 
     <div class="section">
       <div class="section-header">
-        <span class="section-title">ブランチ結果</span>
+        <span class="section-title" data-i18n="branchTitle">ブランチ結果</span>
         <span class="branch-count" id="branchCount"></span>
         <div class="export-buttons">
-          <button id="copySemanticBtn" class="export-btn" title="Copy for Semantic Ranking">Copy for Semantic Ranking</button>
-          <button id="downloadSemanticBtn" class="export-btn export-btn-secondary" title="Download for Semantic Ranking">Download for Semantic Ranking</button>
+          <button id="copySemanticBtn" class="export-btn" type="button" data-i18n="copyButton" data-i18n-title="copyTitle" title="意味評価用にコピー">意味評価用にコピー</button>
+          <button id="downloadSemanticBtn" class="export-btn export-btn-secondary" type="button" data-i18n="downloadButton" data-i18n-title="downloadTitle" title="意味評価用にダウンロード">意味評価用にダウンロード</button>
         </div>
       </div>
+      <div id="branchStatus" class="branch-status" role="status" aria-live="polite"></div>
       <div class="branch-cards" id="branchCards">
-        <div class="no-branches">暗号文を入力し、マッピングを設定するとデコード結果が表示されます</div>
+        <div class="no-branches" data-i18n="emptyMessage">暗号文を入力し、マッピングを設定するとデコード結果が表示されます</div>
       </div>
     </div>
   </div>
@@ -52,6 +58,7 @@
     </div>
   </footer>
 
+  <script src="logic.js"></script>
   <script src="script.js"></script>
 </body>
 </html>

@@ -73,10 +73,11 @@ hub: true
 ## ✨ 特徴
 
 - **部分マッピングの管理**: 確定した対応と、まだ曖昧な候補を分けて管理
-- **ブランチ生成**: 複数の候補からすべての組み合わせを自動生成し、比較可能
+- **安全なブランチ生成**: 生成前に組合せ上限を計算し、最大200通りまでを比較可能
 - **コンフリクト検出**: 同じ平文文字が複数の暗号文字に割り当てられた場合を視覚的に警告
 - **相互ハイライト**: テキストとマッピング表の間でホバー連動
-- **Semantic Ranking連携**: ブランチ結果を[Semantic Candidate Ranker](https://github.com/ipusiron/gematria-cipherlab)用フォーマットでエクスポート可能
+- **Semantic Ranking連携**: ブランチ結果を[Semantic Candidate Ranker](https://github.com/ipusiron/semantic-candidate-ranker)用フォーマットでエクスポート可能
+- **日本語・英語表示**: 右上のボタンで画面表示を切り替え可能
 - **完全クライアントサイド**: サーバー通信なし、データはブラウザー内のみ
 
 ---
@@ -100,16 +101,22 @@ hub: true
 
 - 候補が1つの場合 → 自動的にその候補を採用
 - 候補が2つ以上の場合 → すべての組み合わせでブランチを生成
+- 同じ平文文字を二重に使う組み合わせ → 一対一制約により除外
+- 生成前の組合せ上限が200通りを超える場合 → 生成を停止し、候補の絞り込みを案内
 
 ### ブランチ結果
 
 - 各ブランチは候補の組み合わせを示すラベル付き
 - ブランチ固有のマッピングはハイライト表示
 - マッピングがない文字は大文字のまま表示
+- 画面上の「生成前の組合せ上限」で、分岐量を確認可能
+
+> [!NOTE]
+> 表示する件数は一対一制約に反する組み合わせを除外した後の値です。「生成前の組合せ上限」は安全判定用の上限値なので、実際のブランチ数より多い場合があります。
 
 ### エクスポート機能
 
-ブランチ結果を[Semantic Candidate Ranker](https://github.com/ipusiron/gematria-cipherlab)で意味評価するためのフォーマットでエクスポートできます。
+ブランチ結果を[Semantic Candidate Ranker](https://github.com/ipusiron/semantic-candidate-ranker)で意味評価するためのフォーマットでエクスポートできます。
 
 | ボタン | 機能 |
 |--------|------|
@@ -136,7 +143,7 @@ dear friend i do not know whether you are at the house
 
 ## 🔗 関連ツール
 
-- **[Semantic Candidate Ranker (gematria-cipherlab)](https://github.com/ipusiron/gematria-cipherlab)** - 意味評価による候補ランキングツール。
+- **[Semantic Candidate Ranker](https://github.com/ipusiron/semantic-candidate-ranker)** - 意味評価による候補ランキングツール。
   - 本ツールのエクスポート機能で出力した候補を読み込み、Embeddingベースの意味評価でランキングできる。
 - **[Frequency Analyzer](https://github.com/ipusiron/frequency-analyzer)** - 頻度分析ツール（Day009）。
   - 換字式暗号の解析前に、文字の出現頻度を調べる際に活用できる。
@@ -151,14 +158,37 @@ dear friend i do not know whether you are at the house
 
 ---
 
+## 🎯 ユースケース
+
+このツールならではの使い方は、単一換字暗号を解く途中で「ある暗号文字に複数の候補が残っている」状態をそのまま保持し、少数の仮説だけを見比べることです。たとえば、頻度分析で `Q → e` を確定し、`X → {a, o}`、`Z → {r, s}` と推定した場合、4通りの復号結果を同じ順序で確認できます。
+
+本ツールは自動解読器ではなく、表示された候補の自然さや正しさも判定しません。候補が多い場合は、頻度分析や文脈による推測で200通り以下へ絞り込んでから比較してください。
+
+---
+
+## 🖥️ 画面構成
+
+- **入力テキスト**: 大文字を未解読の暗号文、小文字を確定済みの平文として入力
+- **置換マッピング**: 各暗号文字の確定文字と候補文字を指定
+- **未使用の平文文字**: 確定済みでも入力済みでもない文字を確認
+- **ブランチ結果**: 一対一制約を満たす候補の組み合わせと復号結果を縦に表示
+- **意味評価用エクスポート**: 最大200件の結果を外部ツール用のテキストとしてコピーまたは保存
+
+---
+
 ## 📁 ディレクトリー構造
 
 ```
 substitution-mapping-mixer/
 ├── index.html          # メインHTMLファイル
 ├── style.css           # スタイルシート
-├── script.js           # JavaScriptコード
+├── logic.js            # ブランチ計算・復号のコア処理
+├── script.js           # 画面制御・日英表示
 ├── README.md           # 本ドキュメント
+├── README.en.md        # 英語版ドキュメント
+├── package.json        # テスト実行設定
+├── test/               # Node.js標準テスト
+├── .github/workflows/  # GitHub Actions
 ├── LICENSE             # ライセンスファイル
 ├── SPEC.md             # 機能仕様書
 ├── UI_SPEC.md          # UI仕様書
@@ -168,6 +198,14 @@ substitution-mapping-mixer/
 └── assets/             # 画像リソース
     └── screenshot.png  # スクリーンショット
 ```
+
+---
+
+## 🛠️ 動作環境
+
+- 最新版の主要ブラウザー
+- ローカル利用時は `index.html` を直接開いて実行可能
+- テストはNode.js 22で `npm test` を実行（追加パッケージ不要）
 
 ---
 

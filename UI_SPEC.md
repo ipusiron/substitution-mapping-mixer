@@ -112,4 +112,4 @@ Branch cards are never collapsed automatically.
 > Branch growth is not an error.
 > It is the normal operating state of this tool.
 
-The UI must remain stable even when branches increase significantly.
+The UI must remain stable as branches increase. The raw combination upper bound is shown before generation, and generation stops above 200 combinations so the page does not freeze.

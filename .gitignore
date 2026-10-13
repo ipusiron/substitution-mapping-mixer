@@ -26,6 +26,7 @@ yarn-debug.log*
 # Temporary files
 *.tmp
 .cache/
+tmpclaude-*-cwd
 
 # Environment and secrets
 .env
